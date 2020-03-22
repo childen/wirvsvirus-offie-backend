@@ -1,0 +1,91 @@
+# serverless.yml
+
+service: homeoffice-homie
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  stage: dev
+  region: eu-central-1
+  iamRoleStatements:
+    - Effect: Allow
+      Action: 
+        - dynamodb:DescribeTable
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource:
+        - "arn:aws:dynamodb:eu-central-1:183321040270:table/homeoffice-homie-usersTable"
+        - "arn:aws:dynamodb:eu-central-1:183321040270:table/homeoffice-homie-activeTasksTable"
+        - "arn:aws:dynamodb:eu-central-1:183321040270:table/homeoffice-homie-usersTable/index/slack_index"
+        - "arn:aws:dynamodb:eu-central-1:183321040270:table/homeoffice-homie-activeTasksTable/index/main_index"
+
+
+functions:
+  app:
+    handler: index.handler
+    events:
+      - http: ANY /
+      - http: 'ANY {proxy+}'
+
+# The "Resources" your "Functions" use.  Raw AWS CloudFormation goes in here.
+resources:
+  Resources:
+     usersTable:
+       Type: AWS::DynamoDB::Table
+       Properties:
+         TableName: homeoffice-homie-usersTable
+         AttributeDefinitions:
+           - AttributeName: userID
+             AttributeType: S
+           - AttributeName: slackID
+             AttributeType: S
+         KeySchema:
+           - AttributeName: userID
+             KeyType: HASH
+         GlobalSecondaryIndexes:
+           - IndexName: 'slack_index'
+             Projection:
+               ProjectionType: "ALL"
+             ProvisionedThroughput:
+               ReadCapacityUnits: 1
+               WriteCapacityUnits: 1
+             KeySchema:
+              - AttributeName: slackID
+                KeyType: HASH
+         ProvisionedThroughput:
+           ReadCapacityUnits: 1
+           WriteCapacityUnits: 1
+     activeTasksTable:
+       Type: AWS::DynamoDB::Table
+       Properties:
+         TableName: homeoffice-homie-activeTasksTable
+         AttributeDefinitions:
+           - AttributeName: id
+             AttributeType: S
+           - AttributeName: userID
+             AttributeType: S
+           - AttributeName: assignedAt
+             AttributeType: N
+           - AttributeName: taskID
+             AttributeType: N
+         KeySchema:
+           - AttributeName: id
+             KeyType: HASH
+         GlobalSecondaryIndexes:
+           - IndexName: 'main_index'
+             Projection:
+               ProjectionType: "ALL"
+             ProvisionedThroughput:
+               ReadCapacityUnits: 1
+               WriteCapacityUnits: 1
+             KeySchema:
+              - AttributeName: userID
+                KeyType: HASH
+         ProvisionedThroughput:
+           ReadCapacityUnits: 1
+           WriteCapacityUnits: 1
+
